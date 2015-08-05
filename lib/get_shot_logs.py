@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import datetime
 
 import json
 import requests
@@ -23,6 +24,7 @@ logging.basicConfig(filename='log_NBA_Shot_Chart.log', level=logging.INFO,
 logger = logging.getLogger(__name__)
 
 SEASONS = ['2014-15', '2013-14']
+SEASONS = ['2013-14']
 
 def extract_date_from_matchup(matchup):
     return datetime.datetime.strptime(matchup[:12], "%b %d, %Y").date()
@@ -41,22 +43,22 @@ def create_statgrabber(grabber, playerId, season):
 	return stats
 
 if __name__ == '__main__':
+	for season in SEASONS:
+		# statgrabbers = [NbaStatsShotDetail, NbaStatsReboundLog]
+		statgrabbers = [NbaStatsShotDetail]
+		for sg in statgrabbers:
+			logger.info('--------' + sg.__name__ + ' starting. --------')
+			df_agg = pd.DataFrame()
+			for p in players:
+				logger.info(p['playerId'])
+				psl = sg(p['playerId'], season)
+				psl.get_data_and_fill_df()
+				df_agg = pd.concat([df_agg, psl.df])
+				time.sleep(4)
 
-for season in SEASONS:
-	statgrabbers = [NbaStatsShotDetail, NbaStatsReboundLog]
-	for sg in statgrabbers:
-		logger.info('--------', sg.__name__, ' starting. --------')
-		df_agg = pd.DataFrame()
-		for p in players:
-			logger.info(p['playerId'])
-			psl = sg(p['playerId'], season)
-			psl.get_data_and_fill_df()
-			df_agg = pd.concat([df_agg, psl.df])
-			time.sleep(4)
-
-		if not df_agg.empty:
-			if 'MATCHUP' in df_agg.columns:
-				df_agg.insert(2, 'dt', df_agg.MATCHUP.apply(lambda m: extract_date_from_matchup(m)))
-				df_agg.insert(4, 'opp', df_agg.MATCHUP.apply(lambda m: extract_oppenent_from_matchup(m)))
-			df_agg['season'] =  season.replace('-', '')
-		df_agg.to_csv('{stat_name}{season}.csv'.format(stat_name = psl.__name__, season = season.replace('-', '')), index = False)
+			if not df_agg.empty:
+				if 'MATCHUP' in df_agg.columns:
+					df_agg.insert(2, 'dt', df_agg.MATCHUP.apply(lambda m: extract_date_from_matchup(m)))
+					df_agg.insert(4, 'opp', df_agg.MATCHUP.apply(lambda m: extract_oppenent_from_matchup(m)))
+				df_agg['season'] =  season.replace('-', '')
+			df_agg.to_csv('{stat_name}{season}.csv'.format(stat_name = psl.__name__, season = season.replace('-', '')), index = False)
